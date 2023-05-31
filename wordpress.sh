@@ -50,6 +50,7 @@ cat << EOF > $site_name/docker-compose.yml
 version: '3'
 services:
   db:
+    platform: linux/x86_64
     image: mysql:5.7
     volumes:
       - ./db_data:/var/lib/mysql
