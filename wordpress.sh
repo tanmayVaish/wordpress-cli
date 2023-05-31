@@ -5,10 +5,9 @@ if ! command -v docker &> /dev/null; then
     echo "Docker is not installed. Installing Docker..."
     # Install Docker
     curl -fsSL https://get.docker.com -o get-docker.sh
-    sudo sh get-docker.sh
-    sudo usermod -aG docker $USER
-    sudo systemctl enable docker
-    sudo systemctl start docker
+    sh get-docker.sh
+    systemctl enable docker
+    systemctl start docker
     echo "Docker has been installed."
 else
     echo "Docker is already installed."
@@ -18,14 +17,14 @@ fi
 if ! command -v docker-compose &> /dev/null; then
     echo "Docker Compose is not installed. Installing Docker Compose..."
     # Install Docker Compose
-    sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-    sudo chmod +x /usr/local/bin/docker-compose
+    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    chmod +x /usr/local/bin/docker-compose
     echo "Docker Compose has been installed."
 else
     echo "Docker Compose is already installed."
 fi
 
-# check if site name is provided as commandline argument
+# check if site name is provided as command-line argument
 if [ -z "$1" ]; then
     echo "Site name not provided. Please provide the site name as a command-line argument."
     exit 1
@@ -38,7 +37,7 @@ if grep -q "$site_name" "/etc/hosts"; then
     echo "The entry for $site_name already exists in /etc/hosts."
 else
     # Create a /etc/hosts entry for the site name
-    sudo -- sh -c "echo '127.0.0.1 $site_name' >> /etc/hosts"
+    sh -c "echo '127.0.0.1 $site_name' >> /etc/hosts"
     echo "The entry for $site_name has been added to /etc/hosts."
 fi
 
@@ -50,7 +49,6 @@ cat << EOF > $site_name/docker-compose.yml
 version: '3'
 services:
   db:
-    platform: linux/x86_64
     image: mysql:5.7
     volumes:
       - ./db_data:/var/lib/mysql
@@ -100,7 +98,7 @@ server {
 }
 EOF
 
-# function to start containers
+# Function to start containers
 start_containers() {
     cd $site_name
     docker-compose up -d
@@ -111,33 +109,32 @@ start_containers() {
     fi
 }
 
-# function to stop the containers
+# Function to stop the containers
 stop_containers() {
     cd $site_name
 
     docker-compose down
     if [ $? -eq 0 ]; then
         echo "WordPress site '$site_name' has been stopped."
-        
+
         # Remove entry from /etc/hosts
-        sudo sed -i "/$site_name/d" /etc/hosts
+        sed -i "/$site_name/d" /etc/hosts
         echo "Removed entry for $site_name from /etc/hosts."
     else
         echo "Failed to stop the WordPress site."
     fi
 }
 
-
-# function to delete site
+# Function to delete site
 delete_site() {
     stop_containers
     cd ..
     docker-compose rm -f
-    sudo rm -rf $site_name
+    rm -rf $site_name
     echo "WordPress site '$site_name' has been deleted."
 }
 
-# check the subcommand
+# Check the subcommand
 if [ -z "$2" ]; then
     start_containers
 else
