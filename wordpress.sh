@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Check if docker is installed
+
 if ! command -v docker &> /dev/null; then
     echo "Docker is not installed. Installing Docker..."
     # Install Docker
@@ -24,6 +25,8 @@ else
     echo "Docker Compose is already installed."
 fi
 
+echo "=================================================="
+
 # check if site name is provided as command-line argument
 if [ -z "$1" ]; then
     echo "Site name not provided. Please provide the site name as a command-line argument."
@@ -38,71 +41,100 @@ if grep -q "$site_name" "/etc/hosts"; then
 else
     # Create a /etc/hosts entry for the site name
     sh -c "echo '127.0.0.1 $site_name' >> /etc/hosts"
+    # if above command fails, echo error and exit
+    if [ $? -ne 0 ]; then
+        echo "Failed to add the entry for $site_name to /etc/hosts. Try sudo"
+        exit 1
+    fi
     echo "The entry for $site_name has been added to /etc/hosts."
 fi
 
 # Create a directory for the WordPress site
 mkdir -p $site_name
 
-# Create a docker-compose.yml file
-cat << EOF > $site_name/docker-compose.yml
-version: '3'
-services:
-  db:
-    image: mysql:5.7
-    volumes:
-      - ./db_data:/var/lib/mysql
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: wordpress
-      MYSQL_USER: wordpress
-      MYSQL_PASSWORD: wordpress
 
-  wordpress:
-    depends_on:
-      - db
-    image: wordpress:latest
-    volumes:
-      - ./wordpress:/var/www/html
-    restart: always
-    environment:
-      WORDPRESS_DB_HOST: db:3306
-      WORDPRESS_DB_USER: wordpress
-      WORDPRESS_DB_PASSWORD: wordpress
-
-  nginx:
-    image: nginx:latest
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx:/etc/nginx/conf.d
-      - ./wordpress:/var/www/html
-    restart: always
+# Check if docker-compose.yml file exists
+if [ ! -f "$site_name/docker-compose.yml" ]; then
+    # Create a docker-compose.yml file
+    cat << EOF > $site_name/docker-compose.yml
+    version: '3'
+    services:
+      db:
+        image: mysql:5.7
+        volumes:
+          - ./db_data:/var/lib/mysql
+        restart: always
+        environment:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+    
+      wordpress:
+        depends_on:
+          - db
+        image: wordpress:latest
+        volumes:
+          - ./wordpress:/var/www/html
+        restart: always
+        environment:
+          WORDPRESS_DB_HOST: db:3306
+          WORDPRESS_DB_USER: wordpress
+          WORDPRESS_DB_PASSWORD: wordpress
+    
+      nginx:
+        image: nginx:latest
+        ports:
+          - "80:80"
+        volumes:
+          - ./nginx:/etc/nginx/conf.d
+          - ./wordpress:/var/www/html
+        restart: always
 EOF
+
+    echo "docker-compose.yml file created."
+elif [ -f "$site_name/docker-compose.yml" ]; then
+    echo "docker-compose.yml file already exists."
+else
+    echo "Failed to create docker-compose.yml file. Try sudo!"
+    exit 1
+fi
 
 # Creating Nginx configuration
-mkdir -p $site_name/nginx
-cat << EOF > $site_name/nginx/default.conf
-server {
-    listen 80;
-    server_name $site_name;
+nginx_conf_file="$site_name/nginx/default.conf"
+if [ ! -f "$nginx_conf_file" ]; then
+    mkdir -p $site_name/nginx
+    cat << EOF > $nginx_conf_file
+    server {
+        listen 80;
+        server_name $site_name;
 
-    location / {
-        proxy_pass http://wordpress;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
+        location / {
+            proxy_pass http://wordpress;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+        }
     }
-}
 EOF
+
+    echo "Nginx configuration file created."
+elif [ -f "$nginx_conf_file" ]; then
+    echo "Nginx configuration file already exists."
+else
+    echo "Failed to create Nginx configuration. Try sudo!"
+    exit 1
+fi
+
+echo "=================================================="
 
 # Function to start containers
 start_containers() {
     cd $site_name
     docker-compose up -d
     if [ $? -eq 0 ]; then
+        echo "=================================================="
         echo "WordPress site '$site_name' has been created and is accessible at http://$site_name"
     else
         echo "Failed to create the WordPress site."
