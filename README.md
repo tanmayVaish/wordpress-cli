@@ -31,25 +31,25 @@ Docker Compose: Make sure Docker Compose is installed on your system. If not, th
     - Create and start a WordPress site:
 
         ```
-        ./wordpress.sh mysite
+        ./wordpress.sh mysite.com
         ```
 
     - Start an existing WordPress site:
 
         ```
-        ./wordpress.sh mysite start
+        ./wordpress.sh mysite.com start
         ```
 
     - Stop a running WordPress site:
 
         ```
-        ./wordpress.sh mysite stop
+        ./wordpress.sh mysite.com stop
         ```
 
     - Delete a WordPress site:
 
         ```
-        ./wordpress.sh mysite delete
+        ./wordpress.sh mysite.com delete
         ```
 5. Access your WordPress site:
 
