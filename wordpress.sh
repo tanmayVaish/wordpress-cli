@@ -1,5 +1,12 @@
 #!/bin/bash
 
+
+# if $2 is not valid, then exit
+if [ ! -z "$2" ] && [ "$2" != "start" ] && [ "$2" != "stop" ] && [ "$2" != "delete" ]; then
+    echo "Invalid subcommand. Valid subcommands are: start, stop, delete."
+    exit 1
+fi
+
 # Check if docker is installed
 
 if ! command -v docker &> /dev/null; then
